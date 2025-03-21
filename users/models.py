@@ -47,6 +47,11 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)  ##helps login in the django admin panel
     is_superuser = models.BooleanField(default=False)
 
+    ##code for profile pic
+    profilePicture = models.URLField(max_length=500, blank=True, null=True)
+
+
+
     objects = UserAccountManager()
 
     USERNAME_FIELD = 'email'

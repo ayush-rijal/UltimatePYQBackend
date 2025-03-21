@@ -9,6 +9,20 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView
 )   ##these views are to be overriden
 
+
+###For usersview
+from .serializers import UserAccountSerializer
+
+class UserMeView(APIView):
+    
+
+    def get(self, request):
+        serializer = UserAccountSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
 class CustomProviderAuthView(ProviderAuthView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)  ##overriding post only no the get
@@ -141,3 +155,7 @@ class LogoutView(APIView):
 #         response.delete_cookie('refresh', path=settings.AUTH_COOKIE_PATH, domain=settings.BACKEND_DOMAIN)
 
 #         return response    
+
+
+
+
