@@ -27,4 +27,5 @@ urlpatterns = [
 
 
 path('userapi/',include('users.urls')),
+path('todoapi/', include('todoList.urls')),
 ]
