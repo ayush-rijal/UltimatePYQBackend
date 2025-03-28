@@ -49,13 +49,18 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 
     ##code for profile pic
     profilePicture = models.URLField(max_length=500, blank=True, null=True)
-
-
+    
+   
 
     objects = UserAccountManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
+    @property  ##Why Use @property? full_name is dynamically generated whenever accessed
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self):
         return self.email
+    

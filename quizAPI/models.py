@@ -1,5 +1,6 @@
 from django.db import models
 import pandas as pd
+from django.contrib.auth import get_user_model
 
 class Category0(models.Model):
     name=models.CharField(max_length=15)
@@ -107,3 +108,79 @@ class Choice(models.Model):
 
     def __str__(self):
         return f"{self.question.text[:50]}, {self.text[:20]}"    
+    
+
+User=get_user_model()    
+class UserResponse(models.Model):   ##for particular question
+    user=models.ForeignKey(User,on_delete=models.CASCADE,related_name='response')  
+    question=models.ForeignKey(Question,on_delete=models.CASCADE)
+    selected_choice=models.ForeignKey(Choice,on_delete=models.CASCADE)
+    is_correct=models.BooleanField(default=False)
+    timestamp=models.DateTimeField(auto_now_add=True)
+    is_submitted=models.BooleanField(default=False)
+
+    class Meta:
+        unique_together=('user','question')
+
+    def save(self,*args,**kwargs):
+        self.is_correct=self.selected_choice.is_correct
+        super().save(*args,**kwargs)
+        if self.is_submitted:
+            self.update_quiz_result()
+
+
+    def update_quiz_result(self):
+        result,_=UserQuizResult.objects.get_or_create(
+            user=self.user,
+            questions_file=self.question.questions_file
+        )
+        result.update_points()
+
+
+class UserQuizResult(models.Model):  ##for particular question file
+    user=models.ForeignKey(User,on_delete=models.CASCADE,related_name='quiz_results')
+    questions_file=models.ForeignKey(Questions_file, on_delete=models.CASCADE, related_name='results')
+    points=models.IntegerField(default=0)
+    completed_at=models.DateTimeField(null=True,blank=True)
+
+
+    class Meta:
+        unique_together=('user','questions_file')
+
+
+    def update_points(self):
+        correct_count=UserResponse.objects.filter(
+            user=self.user,
+            question__questions_file=self.questions_file,
+            is_correct=True,
+            is_submitted=True
+
+            ).count()
+
+        self.points=correct_count*1
+        self.save()
+        self.update_leaderboard()
+
+    def update_leaderboard(self):
+        leaderboard, _ =Leaderboard.objects.get_or_create(user=self.user)
+        leaderboard.update_total()
+
+
+class Leaderboard(models.Model): ##as you know its leaderboard
+    user=models.ForeignKey(User,on_delete=models.CASCADE,related_name='leaderboard_entries')
+    total_points=models.IntegerField(default=0)
+    last_updated=models.DateTimeField(auto_now=True)
+
+    def update_total(self):
+        self.total_points=UserQuizResult.objects.filter(user=self.user).aggregate(
+            total=models.Sum('points')
+        )['total'] or 0
+        self.save()
+
+
+
+
+
+
+
+
