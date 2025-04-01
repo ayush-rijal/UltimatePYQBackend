@@ -138,7 +138,9 @@ class SubmitQuizAPIView(APIView):
         return Response({
             "status": "quiz submitted",
             "points": result.points,
-            "total_questions": Question.objects.filter(questions_file=questions_file_obj).count()
+            "total_questions": Question.objects.filter(questions_file=questions_file_obj).count(),
+            "responses":responses
+            
         }, status=status.HTTP_201_CREATED)
 
 class QuizResultAPIView(generics.RetrieveAPIView):
