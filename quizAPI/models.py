@@ -2,29 +2,33 @@ from django.db import models
 import pandas as pd
 from django.contrib.auth import get_user_model
 
-class Category0(models.Model):
-    name=models.CharField(max_length=15)
-
+class Category(models.Model):
+    name=models.CharField(max_length=15,unique=True)
+    parent=models.ForeignKey('self',null=True,blank=True,on_delete=models.CASCADE,related_name='children')
+    level=models.PositiveBigIntegerField(default=0)
+    
     class Meta:
-        verbose_name_plural='Categories0'
-    def __str__(self):
-        return self.name    
+        verbose_name_plural='Categories'
 
-
-class Category1(models.Model):
-    name=models.CharField(max_length=15)
-    category0=models.ForeignKey(Category0,on_delete=models.CASCADE)
-
-    class Meta:
-        verbose_name_plural= 'Categories1'
     def __str__(self):
         return self.name
-    
+
+    '''
+    Normally, save() just writes the object to the database. Here, you’re adding logic to update level before that happens.
+    '''
+    def save(self,*args,**kwargs):
+        if self.parent:
+            self.level=self.parent.level+1
+        else:
+            self.level=0
+        super().save(*args,**kwargs)            
+
+
+
 class Questions_file(models.Model):
     title=models.CharField(max_length=255)
     description=models.TextField()
-    category0=models.ForeignKey(Category0,on_delete=models.CASCADE)
-    category1=models.ForeignKey(Category1,on_delete=models.CASCADE)
+    category=models.ForeignKey(Category,related_name='questions_files',on_delete=models.CASCADE,null=True) #Multiple Categories
     questions_file=models.FileField(upload_to='quiz/')
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True),

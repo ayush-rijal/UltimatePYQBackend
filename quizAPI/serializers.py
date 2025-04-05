@@ -1,17 +1,16 @@
 from rest_framework import serializers
-from .models import Question,Choice,SubjectCategory,Category0,Category1,Questions_file,UserQuizResult,UserResponse,Leaderboard
+from .models import Question,Choice,SubjectCategory,Category,Questions_file,UserQuizResult,UserResponse,Leaderboard
 
 
-class Category0Serializer(serializers.ModelSerializer):
+class CategorySerializer(serializers.ModelSerializer):
+    children=serializers.SerializerMethodField() 
+
     class Meta:
-        model=Category0
-        fields=['name']
+        model=Category
+        fields=['level','name','id','children',] 
 
-
-class Category1Serializer(serializers.ModelSerializer):
-    class Meta:
-        model=Category1
-        fields=['name' ]        
+    def get_children(self,obj):
+        return CategorySerializer(obj.children.all(), many=True).data    #You need to dynamically fetch and serialize the child categories (obj.children), and this method lets you control how that happens.
 
 class SubjectCategorySerializer(serializers.ModelSerializer):
     questions_file_title = serializers.CharField(source='questions_file.title', read_only=True)
@@ -21,9 +20,11 @@ class SubjectCategorySerializer(serializers.ModelSerializer):
 
 
 class Questions_fileSerializer(serializers.ModelSerializer): 
+    category=serializers.SlugRelatedField(slug_field='name',queryset=Category.objects.all())
+
     class Meta:
         model=Questions_file
-        fields=['title','category0','category1','created_at']
+        fields=['title','description','category','created_at']
 
 
 class ChoiceSerializer(serializers.ModelSerializer):

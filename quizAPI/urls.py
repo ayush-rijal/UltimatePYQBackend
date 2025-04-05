@@ -1,32 +1,44 @@
-from django.urls import path
-from .views import AllQuestionAPIView, AQuestionAPIView,AllChoiceOfAQuestionAPIView,AllCategory0APIView,AllCategory1APIView,AllQuestions_fileAPIView
+from django.urls import path,re_path
+from .views import AllQuestionAPIView, AQuestionAPIView,AllChoiceOfAQuestionAPIView,AllCategoriesAPIView,AllQuestions_fileAPIView
 from .views import QuizResultAPIView,GlobalLeaderboardAPIView,SubmitQuizAPIView
 # from .views import SubmitAnswerAPIView
+from .views import CategoryChildrenAPIView,AllQuestions_fileAPIView
+
 urlpatterns = [
 
-    path('quiz-leaderboard/', GlobalLeaderboardAPIView.as_view(), name='quiz-leaderboard'),
+    re_path(r'^leaderboard/$', GlobalLeaderboardAPIView.as_view(), name='global-leaderboard'),
 
-    path('category0/', AllCategory0APIView.as_view()),  ##gives all the categories like Medical,Engineering,Loksewa present in the database under domain/quizapi/category0
+    
+    re_path(r'^(?P<category_path>[\w/]+)/files/$', AllQuestions_fileAPIView.as_view(), name='questionsfile-list'),
 
-    path('<str:category0>/', AllCategory1APIView.as_view()),  ##gives all the categories like IOM , CEE , IOE present in the database under domain/quizapi/Medical
+    ##Root categories only
+    path('categories/', AllCategoriesAPIView.as_view(), name='category-list'),
 
-    path('<str:category0>/<str:category1>/', AllQuestions_fileAPIView.as_view()), ###gives all the questions file present in the database for the specific category like IOM2019 , IOM 2018 , IOE2017 under domain/quizapi/Medical/IOM
+    ##Children of a category
+    re_path(r'^(?P<category_path>[\w/]+)/$', CategoryChildrenAPIView.as_view(), name='category-children'), #(?P<category_path>[\w/]+) → Captures letters, numbers, underscores, or /
 
-    path('<str:category0>/<str:category1>/<str:questions_file>/',AllQuestionAPIView.as_view()),   ##gives every question present in the database with pagination under domain/quizapi/Medical/IOM/IOM2019
+    ##quiz files for a category
+    re_path(r'^(?P<category_path>[\w/]+)/files/$', AllQuestions_fileAPIView.as_view(), name='questionsfile-list'), ##[\w-] includes letters, numbers, underscores, and -, but not spaces.
 
-    path('<str:category0>/<str:category1>/<str:questions_file>/<int:pk>/', AQuestionAPIView.as_view()), ##gives the specific question with its ID under domain/quizapi/Medical/IOM/IOM2019/1
+    #questions in a quiz file
+    re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/$', AllQuestionAPIView.as_view(), name='question-list'),  ##[^/]+ means "match any character except /", which includes spaces, letters, numbers, etc
 
+    #single question in a quiz file
+    re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/question/(?P<pk>\d+)/$', AQuestionAPIView.as_view(), name='question-detail'),
 
-    path('<str:category0>/<str:category1>/<str:questions_file>/<int:pk>/choices/',AllChoiceOfAQuestionAPIView.as_view()), ##gives all the choices for the specific question under domain/quizapi/category0/IOM/IOM2019/1/choices
+    #choices for a question
+    re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/question/(?P<pk>\d+)/choices/$', AllChoiceOfAQuestionAPIView.as_view(), name='choice-list'),
 
-    # path('<str:category0>/<str:category1>/<str:questions_file>/<int:pk>/submit/', SubmitAnswerAPIView.as_view(), name='submit-answer'),
+   #submit quiz
+    re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/submit/$', SubmitQuizAPIView.as_view(), name='submit-quiz'),
 
-    path('<str:category0>/<str:category1>/<str:questions_file>/submit/', SubmitQuizAPIView.as_view(), name='submit-answer'),
-    path('<str:category0>/<str:category1>/<str:questions_file>/result/', QuizResultAPIView.as_view(), name='quiz-result'),
-    # path('<str:category0>/<str:category1>/<str:questions_file>/leaderboard/', QuizLeaderboardAPIView.as_view(), name='quiz-leaderboard'),
+    #quiz result
+    re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/result/$', QuizResultAPIView.as_view(), name='quiz-result'),
 
-    # path('test-leaderboard/', GlobalLeaderboardAPIView.as_view(), name='quiz-leaderboard'),
+    # Global leaderboard
+    re_path(r'^leaderboard/$', GlobalLeaderboardAPIView.as_view(), name='global-leaderboard'),
 ]
+
 
 
 

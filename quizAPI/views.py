@@ -1,7 +1,7 @@
 from rest_framework import generics
 from django.http import Http404
-from .models import Question,Choice,Category0,Category1, Questions_file,UserQuizResult,UserResponse,Leaderboard
-from .serializers import QuestionSerializer,ChoiceSerializer,Category0Serializer,Category1Serializer,Questions_fileSerializer,UserQuizResultSerializer,UserResponseSerializer,LeaderboardSerializer
+from .models import Question,Choice,Category,Questions_file,UserQuizResult,UserResponse,Leaderboard
+from .serializers import QuestionSerializer,ChoiceSerializer,CategorySerializer,Questions_fileSerializer,UserQuizResultSerializer,UserResponseSerializer,LeaderboardSerializer
 
 from django.shortcuts import get_object_or_404
 
@@ -19,26 +19,42 @@ class QuestionPagination(PageNumberPagination):
     max_page_size=10
 
 
-class AllCategory0APIView(generics.ListAPIView):
-    queryset=Category0.objects.all()
-    serializer_class=Category0Serializer    
+class AllCategoriesAPIView(generics.ListAPIView):
+    queryset=Category.objects.filter(parent__isnull=True) #Root categories only
+    serializer_class=CategorySerializer
 
-
-class AllCategory1APIView(generics.ListAPIView):
-    serializer_class=Category1Serializer  
+class CategoryChildrenAPIView(generics.ListAPIView):
+    serializer_class=CategorySerializer
 
     def get_queryset(self):
-        category0=self.kwargs.get('category0')
-        return Category1.objects.filter(category0__name=category0)    
+        category_path=self.kwargs.get('category_path','').split('/')
+        if not category_path or category_path==['']:
+            return Category.objects.filter(parent__isnull=True)
+        try:
+            current_category=Category.objects.get(name=category_path[-1])
+            return Category.objects.filter(parent=current_category)
+        except Category.DoesNotExist:
+            raise Http404("Category not found")    
 
 
 class AllQuestions_fileAPIView(generics.ListAPIView):
     serializer_class=Questions_fileSerializer 
+    
 
     def get_queryset(self):
-        category0=self.kwargs.get('category0')
-        category1=self.kwargs.get('category1')
-        return Questions_file.objects.filter(category0__name=category0,category1__name=category1)   
+        category_path=self.kwargs.get('category_path','').split('/')
+        if not category_path or category_path==['']:
+            return Questions_file.objects.all()
+        try:
+            last_category=Category.objects.get(name=category_path[-1])
+            print(f"Last category: {last_category}")
+            queryset=Questions_file.objects.filter(category=last_category)
+            print(f"Files found: {list(queryset)}")
+            return queryset
+        except Category.DoesNotExist:
+            return Questions_file.objects.none()  # Return an empty queryset if the category doesn't exist
+
+   
     
 class AllQuestionAPIView(generics.ListAPIView):
     # queryset=Question.objects.all().order_by('id')
@@ -46,48 +62,55 @@ class AllQuestionAPIView(generics.ListAPIView):
     pagination_class=QuestionPagination
 
     def get_queryset(self):
-        category0=self.kwargs.get('category0')
-        category1=self.kwargs.get('category1')
-        questions_file=self.kwargs.get('questions_file')
-        return Question.objects.filter(questions_file__category0__name=category0,
-         questions_file__category1__name=category1,
-         questions_file__title=questions_file
-        ).order_by('id')
+        category_path=self.kwargs.get('category_path','').split('/')
+        questions_file_title=self.kwargs.get('questions_file', '')
+        if not category_path or not questions_file_title:
+            return Question.objects.none()
+        
+        try:
+            last_category=Category.objects.get(name=category_path[-1])
+            questions_file=Questions_file.objects.get(title=questions_file_title,category=last_category)
+            return Question.objects.filter(questions_file=questions_file).order_by('id')
+        except (Category.DoesNotExist,Questions_file.DoesNotExist):
+            return Question.objects.none()
 
 class AQuestionAPIView(generics.RetrieveAPIView):
     serializer_class=QuestionSerializer
-    pagination_class=QuestionPagination
+    lookup_field='pk'
 
     def get_queryset(self):
-        category0=self.kwargs.get('category0')
-        category1=self.kwargs.get('category1')
-        questions_file=self.kwargs.get('questions_file')
-        question_id=self.kwargs.get('pk')
+        category_path=self.kwargs.get('category_path','').split('/')
+        questions_file_title=self.kwargs.get('questions_file','')
 
-        return Question.objects.filter(questions_file__category0__name=category0,
-         questions_file__category1__name=category1,
-         questions_file__title=questions_file,
-         id=question_id
-        )                             
+        try:
+            last_category=Category.objects.get(name=category_path[-1])
+            questions_file=Questions_file.objects.get(title=questions_file_title,category=last_category)
+            return Question.objects.filter(questions_file=questions_file)
+        except (Category.DoesNotExist,Questions_file.DoesNotExist):
+            return Question.objects.none()
+
         
 
 class AllChoiceOfAQuestionAPIView(generics.ListAPIView):
     serializer_class=ChoiceSerializer
 
     def get_queryset(self):
-        category0=self.kwargs.get('category0')
-        category1=self.kwargs.get('category1')
-        questions_file=self.kwargs.get('questions_file')
-        question_id=self.kwargs.get('pk')
+       category_path=self.kwargs.get('category_path','').split('/')
+       questions_file_title=self.kwargs.get('questions_file','')
+       question_id=self.kwargs.get('pk')
 
-        return Choice.objects.filter(question__questions_file__category0__name=category0,
-         question__questions_file__category1__name=category1,
-         question__questions_file__title=questions_file,
-         question__id=question_id
-        )
+       try:
+        last_category=Category.objects.get(name=category_path[-1])
+        questions_file=Questions_file.objects.get(title=questions_file_title,category=last_category)
+        question=Question.objects.get(id=question_id,questions_file=questions_file)
+        return Choice.objects.filter(question=question)
+       
+       except (Category.DoesNotExist,Questions_file.DoesNotExist,Question.DoesNotExist):
+        return Choice.objects.none()
+
 
 class SubmitQuizAPIView(APIView):
-    def post(self, request, category0, category1, questions_file):
+    def post(self, request, category_path,questions_file):
         # Expecting {"choices": {question_id: choice_id, ...}, "is_submitted": true}
         choices = request.data.get("choices", {})
         is_submitted = request.data.get("is_submitted", True)
@@ -96,13 +119,19 @@ class SubmitQuizAPIView(APIView):
             return Response({"error": "No choices provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Fetch the Questions_file
-        questions_file_obj = get_object_or_404(
-            Questions_file,
-            category0__name=category0,
-            category1__name=category1,
-            title=questions_file
-        )
+        category_path_list=category_path.split('/')
+        try:
+            last_category=Category.objects.get(name=category_path_list[-1])
+            
 
+            questions_file_obj = get_object_or_404(
+            Questions_file,
+            title=questions_file,
+            category=last_category
+        )
+        except Category.DoesNotExist:
+            return Response({"error": "Category not found"}, status=status.HTTP_404_NOT_FOUND)    
+            
         # Process each answer
         responses = []
         for question_id, choice_id in choices.items():
@@ -147,20 +176,25 @@ class QuizResultAPIView(generics.RetrieveAPIView):
     serializer_class = UserQuizResultSerializer
 
     def get_object(self):
-        return get_object_or_404(
+        category_path=self.kwargs.get('category_path', '').split('/')
+        questions_file_title=self.kwargs.get('questions_file')
+        
+        try:
+            last_category=Category.objects.get(name=category_path[-1])
+            questions_file=Questions_file.objects.get(title=questions_file_title,category=last_category)
+
+
+            return get_object_or_404(
             UserQuizResult,
             user=self.request.user,
-            questions_file__category0__name=self.kwargs.get('category0'),
-            questions_file__category1__name=self.kwargs.get('category1'),
-            questions_file__title=self.kwargs.get('questions_file')
-        )
+            questions_file=questions_file
+            )
+        
+        except (Category.DoesNotExist,Questions_file.DoesNotExist):
+            raise Http404("Quiz result not found ")
+        
 
 
-# class GlobalLeaderboardAPIView(generics.ListAPIView):
-#     serializer_class = LeaderboardSerializer
-    
-#     def get_queryset(self):
-#         return Leaderboard.objects.all().order_by('-total_points')
 
 
 import logging
