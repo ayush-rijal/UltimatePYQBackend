@@ -1,5 +1,29 @@
 from django.contrib import admin
-from .models import Category, Questions_file, Question, Choice, SubjectCategory,UserResponse,UserQuizResult,Leaderboard
+from .models import Category, Questions_file, Question, Choice, SubjectCategory,UserResponse,UserQuizResult,Leaderboard,Image
+
+from django.utils.html import format_html
+
+
+@admin.register(Image)
+class ImageAdmin(admin.ModelAdmin):
+    list_display = ('question', 'display_image', 'image_url')
+    readonly_fields = ('display_image_field',)
+
+    def display_image(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
+        return "No Image"
+    display_image.short_description = "Image Preview"
+
+    def display_image_field(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="300" height="300" />', obj.image.url)
+        return "No Image"
+    display_image_field.short_description = "Image"
+
+
+
+
 
 class CategoryAdmin(admin.ModelAdmin):
     list_display=('name', 'parent','level')

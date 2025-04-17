@@ -1,6 +1,8 @@
 from django.db import models
 import pandas as pd
 from django.contrib.auth import get_user_model
+import os
+from django.core.files import File
 
 class Category(models.Model):
     name=models.CharField(max_length=15,unique=True)
@@ -21,8 +23,15 @@ class Category(models.Model):
             self.level=self.parent.level+1
         else:
             self.level=0
-        super().save(*args,**kwargs)            
+        super().save(*args,**kwargs)   
 
+class Image(models.Model):
+    image = models.ImageField(upload_to='quiz/images/', null=True, blank=True)
+    image_url = models.URLField(max_length=500, null=True, blank=True)
+    question = models.ForeignKey('Question', on_delete=models.CASCADE, related_name='images', null=True, blank=True)
+
+    def __str__(self):
+        return f"Image for {self.question.text[:50]}"
 
 
 class Questions_file(models.Model):
@@ -49,9 +58,14 @@ class Questions_file(models.Model):
         try:
             df=pd.read_excel(self.questions_file.path)   
             df.columns=df.columns.str.strip()
+
+            # Get the directory of the Excel file to resolve relative image paths
+            # excel_dir = os.path.dirname(self.questions_file.path) 
             for index, row in df.iterrows():
                 try:
                     question_text=str(row['Question']).strip()
+                    print(f"Processing Question: {question_text}")
+
                     choices={
                         'A':str(row['A']).strip(),
                         'B':str(row['B']).strip(),
@@ -74,6 +88,59 @@ class Questions_file(models.Model):
                         text=question_text,
                         subject_category=subject_category
                     )
+                    #Handle question images
+                    if 'QuestionImages' in row and pd.notna(row['QuestionImages']):
+                        print("✅ 'QuestionImages' column found and not empty")
+
+                        image_paths = str(row['QuestionImages']).split(',')
+                        print(f"Image Paths for Question '{question_text}': {image_paths}")
+
+
+                        for img_path in image_paths:
+                            img_path = img_path.strip()
+                            print(f"🔍 Processing image path: '{img_path}'")
+                            if not img_path:
+                                print(f"Empty image path found for question '{question_text}'")
+                                continue
+
+                            # Resolve the full path relative to the Excel file's directory
+                            # full_img_path = os.path.normpath(os.path.join(excel_dir, img_path))
+                            local_path=r"G:\PYQ-ExcelAndMedias\ExcelConvertable\images"
+                            full_img_path = os.path.normpath(os.path.join(local_path, img_path))
+                            print(f"Checking Image Path: {full_img_path}")
+
+                            #Check if the image file exists
+                            if os.path.exists(full_img_path):
+                                print("✅ Image file exists")
+                                try:
+                                    with open(full_img_path, 'rb') as f:
+                                        image_file = File(f, name=os.path.basename(full_img_path))
+
+                                        print(f"📦 Image file loaded: {image_file.name}")
+
+
+                                         # Optional: print image size to confirm it's not empty
+                                        f.seek(0, os.SEEK_END)
+                                        file_size = f.tell()
+                                        print(f"📏 File size: {file_size} bytes")
+
+                                        # Go back to start
+                                        f.seek(0)
+
+                                        image_obj, created = Image.objects.get_or_create(
+                                            question=question,
+                                            image=image_file
+                                        )
+                                        print(f"Image Saved: {image_obj.image.url} (Created: {created})")
+                                except Exception as e:
+                                    print(f"Error opening image file '{full_img_path}': {e}")
+                            else:
+                                print(f"Image file not found: {full_img_path}")
+                    else:
+                        print(f"❌ 'QuestionImages' column missing or empty for question: {question_text}")
+
+
+
                     
                     for choice_key , choice_text in choices.items():
                         is_correct=(choice_key==correct_answer)
