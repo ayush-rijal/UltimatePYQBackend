@@ -36,7 +36,7 @@ urlpatterns = [
     re_path(r'^(?P<category_path>[\w/]+)/(?P<questions_file>[^/]+)/result/$', QuizResultAPIView.as_view(), name='quiz-result'),
 
     # Global leaderboard
-    re_path(r'^leaderboard/$', GlobalLeaderboardAPIView.as_view(), name='global-leaderboard'),
+    # re_path(r'^leaderboard/$', GlobalLeaderboardAPIView.as_view(), name='global-leaderboard'),
 ]
 
 

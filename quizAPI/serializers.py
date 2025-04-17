@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Question,Choice,SubjectCategory,Category,Questions_file,UserQuizResult,UserResponse,Leaderboard
+from .models import Question,Choice,SubjectCategory,Category,Questions_file,UserQuizResult,UserResponse,Leaderboard,Image
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -35,12 +35,28 @@ class ChoiceSerializer(serializers.ModelSerializer):
 class QuestionSerializer(serializers.ModelSerializer):
  questions_file_title = serializers.CharField(source='questions_file.title', read_only=True)    
  subject_category_name = serializers.CharField(source='subject_category.name', read_only=True)
+ images=serializers.SerializerMethodField() #Add images field and if wondering how The related_name='images' allows you to access all Image objects related to a Question instance in the reverse direction (i.e., from Question to Image).
+
 #  choices=ChoiceSerializer(many=True,read_only=True)
  class Meta:
         model=Question
         # fields=['text','questions_file_title','subject_category_name','id','choices']
-        fields=['text','questions_file_title','subject_category_name','id']        
+        fields=['text','questions_file_title','subject_category_name','id','images']        
 
+ def get_images(self, obj):
+    images = obj.images.all()
+    result = []
+    for image in images:
+        try:
+            image_data = {
+                'id': image.id,
+                'image': image.image.url if image.image else None,
+                'image_url': image.image_url
+            }
+            result.append(image_data)
+        except Exception as e:
+            print(f"Error processing image {image.id}: {e}")
+    return result  
 
 class UserResponseSerializer(serializers.ModelSerializer):
     class Meta:
