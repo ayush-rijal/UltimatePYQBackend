@@ -3,9 +3,9 @@
 import os
 import sys
 
-
 def main():
     """Run administrative tasks."""
+    setting_module = 'pyqBackend.deployment_setting' if os.environ.get('RENDER_EXTERNAL_HOSTNAME') else 'pyqBackend.settings'
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pyqBackend.settings')
     try:
         from django.core.management import execute_from_command_line
