@@ -1,19 +1,4 @@
-"""
-URL configuration for pyqBackend project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
 from django.urls import path,include
 from django.conf.urls.static import static
@@ -21,15 +6,16 @@ from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('quizapi/',include('quizAPI.urls')),
+    path('notification/', include('notification.urls')), # this is the url for notification api
+    path('quizapi/',include('quizAPI.urls')), # this is the url for quiz api and result api
     path('userapi/', include('djoser.urls')),
+    path("chatapi/", include("chat.urls", namespace="chat")),
     # path('userapi/',include('djoser.urls.jwt')),
 
     #since we are using custom jwt now so we need users url but for simple jwt we dont need this we need djoser.urls.jwt
 
-
-path('userapi/',include('users.urls')),
-path('todoapi/', include('todoList.urls')),
+    # path('blogapi/', include('blog.urls')),
+    path('userapi/',include('users.urls')),
+    path('todoapi/', include('todoList.urls')),
 ]
 
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
