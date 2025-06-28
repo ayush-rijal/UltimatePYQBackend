@@ -15,7 +15,6 @@ from .serializers import UserAccountSerializer
 
 class UserMeView(APIView):
     
-
     def get(self, request):
         serializer = UserAccountSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
