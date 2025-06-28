@@ -3,6 +3,24 @@ import pandas as pd
 from django.contrib.auth import get_user_model
 import os
 from django.core.files import File
+from notification.models import Notification
+
+def save(self, *args, **kwargs):
+    is_new = self.pk is None
+    if self.parent:
+        self.level = self.parent.level + 1
+    else:
+        self.level = 0
+
+    super().save(*args, **kwargs)
+
+    # After saving, create a notification
+    category_count = Category.objects.count()
+    action = "created" if is_new else "updated"
+    Notification.objects.create(
+        message=f"Category '{self.name}' was {action}.",
+        count=category_count
+    )
 
 class Category(models.Model):
     name=models.CharField(max_length=15,unique=True)
@@ -247,11 +265,5 @@ class Leaderboard(models.Model): ##as you know its leaderboard
             total=models.Sum('points')
         )['total'] or 0
         self.save()
-
-
-
-
-
-
 
 
